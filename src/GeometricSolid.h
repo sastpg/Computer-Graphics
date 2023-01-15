@@ -1,14 +1,48 @@
 #ifndef _GEOMETRICSOLID_H
 #define _GEOMETRICSOLID_H
-#include "OBJLoader.h"
 #include "partical_life.h"
+#include <vector>
+#include <iostream>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
+#include "base/texture.h"
+#include "shader.h"
+#include "base/camera.h"
+
+typedef struct aPoint {
+	float x;
+	float y;
+	float z;
+}wPoint;
+typedef struct aUV {
+	float u;
+	float v;
+}UV;
+typedef struct aNormal {
+	float x;
+	float y;
+	float z;
+}Normal;
+
+typedef struct aPointData {
+	int pointindex;
+	int uvindex;
+	int normalindex;
+}PointData;
+
+typedef struct aMaterial {
+	glm::vec3 ambient;
+	glm::vec3 diffuse;
+	glm::vec3 specular;
+	float shininess;
+}Material;
 
 const int cube_vnum = 16;
 const int cube_vtnum = 28;
 const int cube_vnnum = 48; 
 const int cube_fnum = 24;
-Point cube_v[] = {
+wPoint cube_v[] = {
 -0.500000,-0.500000,0.500000
 ,0.500000,-0.500000,0.500000
 ,-0.500000,0.500000,0.500000
@@ -137,7 +171,7 @@ const int sphere_vnum = 764;
 const int sphere_vtnum = 878;
 const int sphere_vnnum = 764;
 const int sphere_fnum = 1520;
-Point sphere_v[]{
+wPoint sphere_v[]{
 0.148778,-0.987688,-0.048341
 ,0.126558,-0.987688,-0.091950
 ,0.091950,-0.987688,-0.126558
@@ -4078,7 +4112,7 @@ const int cone_vnum = 18;
 const int cone_vtnum = 36;
 const int cone_vnnum = 64;
 const int cone_fnum = 28;
-Point cone_v[]{
+wPoint cone_v[]{
 0.707107,-1.000000,-0.707107
 ,0.000000,-1.000000,-1.000000
 ,-0.707107,-1.000000,-0.707107
@@ -4237,7 +4271,7 @@ const int cylinder_vnum = 44;
 const int cylinder_vtnum = 88;
 const int cylinder_vnnum = 124;
 const int cylinder_fnum = 80;
-Point cylinder_v[]{
+wPoint cylinder_v[]{
 0.809017,-1.000000,-0.587785
 ,0.309017,-1.000000,-0.951057
 ,-0.309017,-1.000000,-0.951057
@@ -4615,7 +4649,7 @@ public:
 
 		glGenBuffers(1, &v_VBO);
 		glBindBuffer(GL_ARRAY_BUFFER, v_VBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(Point)*v_size, vertices, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(wPoint)*v_size, vertices, GL_STATIC_DRAW);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		glEnableVertexAttribArray(0);
 		//cout << vertices << " "<< &vertices[0].x << endl;
@@ -4633,7 +4667,7 @@ public:
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		glEnableVertexAttribArray(2);
 	}
-
+	/*
 	void Draw(Shader shader, glm::vec3 position)
 	{
 		shader.use();
@@ -4669,7 +4703,7 @@ public:
 		shader.setMat4("model", model);
 		glDrawArrays(GL_TRIANGLES, 0, triFaces * 3);
 	}
-
+	*/
 	ObjectionType getType() {
 		return ObjectionType::stone;
 	}
@@ -4699,7 +4733,7 @@ protected:
 		case(SolidType::cube):
 			extents = glm::vec3(0.3,0.3,0.3);
 			triFaces = cube_fnum;
-			vertices = new Point[cube_fnum * 3];
+			vertices = new wPoint[cube_fnum * 3];
 			uvs = new UV[cube_fnum * 3];
 			normals = new Normal[cube_fnum * 3];
 			v_size = uv_size = n_size = cube_fnum * 3;
@@ -4716,7 +4750,7 @@ protected:
 		case(SolidType::sphere):
 			extents = glm::vec3(0.3, 0.3, 0.3);
 			triFaces = sphere_fnum;
-			vertices = new Point[sphere_fnum * 3];
+			vertices = new wPoint[sphere_fnum * 3];
 			uvs = new UV[sphere_fnum * 3];
 			normals = new Normal[sphere_fnum * 3];
 			v_size = uv_size = n_size = sphere_fnum * 3;
@@ -4733,7 +4767,7 @@ protected:
 		case(SolidType::cone):
 			extents = glm::vec3(0.3, 0.3, 0.3);
 			triFaces = cone_fnum;
-			vertices = new Point[cone_fnum * 3];
+			vertices = new wPoint[cone_fnum * 3];
 			uvs = new UV[cone_fnum * 3];
 			normals = new Normal[cone_fnum * 3];
 			v_size = uv_size = n_size = cone_fnum * 3;
@@ -4750,7 +4784,7 @@ protected:
 		case(SolidType::cylinder):
 			extents = glm::vec3(0.3, 0.3, 0.3);
 			triFaces = cylinder_fnum;
-			vertices = new Point[cylinder_fnum * 3];
+			vertices = new wPoint[cylinder_fnum * 3];
 			uvs = new UV[cylinder_fnum * 3];
 			normals = new Normal[cylinder_fnum * 3];
 			v_size = uv_size = n_size = cylinder_fnum * 3;
@@ -4814,7 +4848,7 @@ protected:
 	}
 
 
-	Point* vertices;
+	wPoint* vertices;
 	UV* uvs;
 	Normal* normals;
 

@@ -4,9 +4,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "texture.h"
+#include "base/texture.h"
 #include "shader.h"
-#include "Camera.h"
+#include "base/camera.h"
 
 enum class ObjectionType {
 	stone,
@@ -192,147 +192,6 @@ public:
 		this->color.a += dv;
 		if (this->color.a < 0.0f) this->color.a = 0.0f;
 		//else if (this->color.a > 1.0f) this->color.a = 1.0f;
-	}
-};
-/* 在做完fire的部分后尝试泛型解决bullet */
-class ParticleGenerator
-{
-public:
-	// Constructor
-	ParticleGenerator(Shader shader, Texture2D& texture, GLuint amount);
-	// Update all particles
-	void Update(GLfloat dt, BaseOBJ &object, GLuint newParticles, glm::vec3 offset = glm::vec3(0.0f));
-	// Render all particles
-	void Draw();
-private:
-	// State
-	std::vector<FireParticle> particles;
-	GLuint amount;
-	// Render state
-	Shader shader;
-	//Texture2D texture;
-	Texture2D texture;
-	GLuint VAO;
-	// Initializes buffer and vertex attributes
-	void init();
-	// Returns the first Particle index that's currently unused e.g. Life <= 0.0f or 0 if no particle is currently inactive
-	GLuint firstUnusedParticle();
-	// Respawns particle
-	void respawnParticle(FireParticle &particle, BaseOBJ &object, glm::vec3 offset = glm::vec3(0.0f));
-};
-
-class Bullet : public BaseOBJ
-{
-private:
-	glm::vec4 color;
-	float scale;
-public:
-public:
-	const static float DEFAULT_LIFE;
-	const static float DEFAULT_SPEED;
-public:
-	Bullet(glm::vec3 pos, glm::vec3 dir, float life, float speed, glm::vec4 color) :BaseOBJ(ObjectionType::bullet, pos, dir, life, speed) {
-		this->color = color;
-		scale = 1.0f;
-		extents = scale * glm::vec3(0.02, 0.02, 0.02)*glm::vec3(0.5,0.5,0.5);
-	}
-	Bullet() :BaseOBJ(ObjectionType::bullet, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), DEFAULT_LIFE, DEFAULT_SPEED) {
-		color = glm::vec4(15.0f, 15.0f, 6.0f, 1.0f);
-		scale = 1.0f;
-		extents = scale * glm::vec3(0.02, 0.02, 0.02)*glm::vec3(0.5, 0.5, 0.5);
-	}
-	virtual ObjectionType getType() {
-		return this->type;
-	}
-	float getScale() {
-		return this->scale;
-	}
-	glm::vec4 getColor() {
-		return this->color;
-	}
-};
-
-class Gun
-{
-public:
-	// Constructor
-	Gun(Shader shader, Texture2D& texture);
-	// Update all particles
-	void Update(GLfloat dt);
-	std::vector<Bullet>& getBullet() {
-		return bullets;
-	}
-	// Render all particles
-	void Draw();
-	void addBullet(BaseOBJ &object, glm::vec3 offset = glm::vec3(0.0f));
-private:
-	// State
-	std::vector<Bullet> bullets;
-	// Render state
-	Shader shader;
-	//Texture2D texture;
-	Texture2D texture;
-	GLuint VAO;
-	int size;
-	// Initializes buffer and vertex attributes
-	void init();
-	// Respawns particle
-};
-
-class ResourceManager
-{
-public:
-	static vector<BaseOBJ*> recycleBin;
-public:
-	static void controlLife(BaseOBJ* &o1, BaseOBJ* &o2) {
-		switch (o1->getType()) {
-		case ObjectionType::stone:
-			o1->life = 0.0f;
-			recycleBin.push_back(o1);
-			break;
-		case ObjectionType::bullet:
-			o1->life = 0.0f;
-			break;
-		case ObjectionType::spaceship:
-			o1->life -= 1.0f;
-			break;
-		case ObjectionType::enemy:
-			o1->life -= 1.0f;
-			break;
-		default:
-			break;
-		}
-		switch (o2->getType()) {
-		case ObjectionType::stone:
-			o2->life = 0.0f;
-			recycleBin.push_back(o1);
-			break;
-		case ObjectionType::bullet:
-			o2->life = 0.0f;
-			break;
-		case ObjectionType::spaceship:
-			o2->life -= 1.0f;
-			break;
-		case ObjectionType::enemy:
-			o2->life -= 1.0f;
-			break;
-		default:
-			break;
-		}
-		//freshRecycleBin();
-	}
-	static void freshRecycleBin() {
-		for (int i = 0; i < recycleBin.size();i++) {
-			if (recycleBin[i]!=NULL && recycleBin[i]->isDead) {
-				delete recycleBin[i];
-				recycleBin[i] = NULL;
-				recycleBin.erase(recycleBin.begin() + i);
-			}
-		}
-	}
-	static void freshRecycleBin(BaseOBJ* obj) {
-		delete obj;
-		obj = NULL;
 	}
 };
 #endif

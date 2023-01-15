@@ -15,7 +15,8 @@
 #include "diymodel.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
-//#include "GeometricSolid.h"
+#include "GeometricSolid.h"
+#include "objwriter.h"
 //#include "partical_life.h"
 
 #define SCR_WIDTH 1920
@@ -91,7 +92,10 @@ int main()
 
     Shader modelShader("media/shader/light_casters.vs", "media/shader/light_casters.fs");
     Model skull("media/obj/skull/skull.obj");
-	Model skull1("media/obj/diy/cube.obj");
+	Model cone("media/obj/diy/cone.obj");
+	Model cube_("media/obj/diy/cube.obj");
+	Model cylinder("media/obj/diy/cylinder.obj");
+	Model sphere("media/obj/diy/sphere.obj");
 	Model vase("media/obj/vase/HSM0037.obj");
     Shader shaderBall("media/shader/pbr.vs", "media/shader/pbr.fs");
     Shader skyboxShader1("media/shader/skybox2.vs", "media/shader/skybox2.fs");
@@ -506,7 +510,7 @@ int main()
 
 			// skull right
 			model = glm::mat4(1.0f);
-			model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.0f)); // translate it down so it's at the center of the scene
+			model = glm::translate(model, glm::vec3(2.0f, -0.5f, 0.0f)); // translate it down so it's at the center of the scene
 			model = glm::rotate(model, glm::radians(-90.0f), glm::normalize(glm::vec3(1.0, 0.0, 0.0)));
 			model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));	// it's a bit too big for our scene, so scale it down
 			lightingShader.setMat4("model", model);
@@ -539,7 +543,28 @@ int main()
 			model = glm::rotate(model, glm::radians(-90.0f), glm::normalize(glm::vec3(1.0, 0.0, 0.0)));
 			model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));	// it's a bit too big for our scene, so scale it down
 			lightingShader.setMat4("model", model);
-			skull1.draw(lightingShader);
+			cone.draw(lightingShader);
+
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.8f)); // translate it down so it's at the center of the scene
+			model = glm::rotate(model, glm::radians(-90.0f), glm::normalize(glm::vec3(1.0, 0.0, 0.0)));
+			model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));	// it's a bit too big for our scene, so scale it down
+			lightingShader.setMat4("model", model);
+			cube_.draw(lightingShader);
+
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.8f)); // translate it down so it's at the center of the scene
+			model = glm::rotate(model, glm::radians(-90.0f), glm::normalize(glm::vec3(1.0, 0.0, 0.0)));
+			model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));	// it's a bit too big for our scene, so scale it down
+			lightingShader.setMat4("model", model);
+			cylinder.draw(lightingShader);
+
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(0.0f, -1.5f, 0.8f)); // translate it down so it's at the center of the scene
+			model = glm::rotate(model, glm::radians(-90.0f), glm::normalize(glm::vec3(1.0, 0.0, 0.0)));
+			model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));	// it's a bit too big for our scene, so scale it down
+			lightingShader.setMat4("model", model);
+			sphere.draw(lightingShader);
 
 			//GeometricSolid* cube[NumOfGeometrics];
 			// 没有爆炸的时候，显示rock
@@ -822,6 +847,18 @@ void processInput(GLFWwindow* window)
 		is_bomb = true;
 	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
 		saveimage("screenshot.jpg", SCR_WIDTH, SCR_HEIGHT);
+	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) {
+		ExportCube();
+	}
+	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS) {
+		ExportSphere();
+	}
+	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS) {
+		ExportCone();
+	}
+	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS) {
+		ExportCylinder();
+	}
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
