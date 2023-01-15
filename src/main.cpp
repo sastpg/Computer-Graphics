@@ -13,9 +13,15 @@
 #include "base/camera.h"
 #include "plymodel.h"
 #include "diymodel.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+//#include "GeometricSolid.h"
+//#include "partical_life.h"
 
 #define SCR_WIDTH 1920
 #define SCR_HEIGHT 1080
+#define NumberOfStone 3
+#define NumOfGeometrics 20
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -30,13 +36,24 @@ int mode;
 
 // parameters
 bool light = false;
-
-DIYmodel diymodel;
+bool collision = false;
+bool rock_visible = true;
+bool is_bomb = false;
+int rateCount = 0;
+double rate = 0.01;
+float bombx = 0.5, bomby = 3;
+// material
+std::vector<vector<float> > material4 = { {0.25, 0.20725, 0.20725}, {169.0 / 255, 169.0 / 255, 169.0 / 255}, {0.296648, 0.296648, 0.296648} };
+std::vector<vector<float> > material3 = { {0.19225,0.19225,0.19225}, {0.50754,0.50754,0.50754}, {0.508273,0.508273,0.508273} };
+std::vector<vector<float> > material2 = { {0.192250f, 0.192250f, 0.192250f}, {0.667540f, 0.557540f, 0.337540f}, {0.508273f, 0.508273f, 0.508273f} };
+std::vector<vector<float> > material1 = { {0.247250f, 0.199500f, 0.074500f}, {0.751640f, 0.606480f, 0.226480f}, {0.628281f, 0.555802f, 0.556065f} };
+std::vector<float>Shininess = { 11.264, 51.2, 61.2, 171.200001f };
 
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-
+void saveimage(const string& file, int width, int height);
+float inter(float a, float b, float time, float interval);
 
 int main()
 {
@@ -57,7 +74,7 @@ int main()
 	glfwSetScrollCallback(window, scroll_callback);
 
 	// tell GLFW to capture our mouse
-	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -74,6 +91,7 @@ int main()
 
     Shader modelShader("media/shader/light_casters.vs", "media/shader/light_casters.fs");
     Model skull("media/obj/skull/skull.obj");
+	Model skull1("media/obj/diy/cube.obj");
 	Model vase("media/obj/vase/HSM0037.obj");
     Shader shaderBall("media/shader/pbr.vs", "media/shader/pbr.fs");
     Shader skyboxShader1("media/shader/skybox2.vs", "media/shader/skybox2.fs");
@@ -82,7 +100,18 @@ int main()
     Shader lightingShader("media/shader/light_casters.vs", "media/shader/light_casters.fs");
     Shader reconShader("media/shader/recon.vs", "media/shader/recon.fs");
     Shader lightingShader1("media/shader/light_casters1.vs", "media/shader/light_casters1.fs");
-    //PlyModel happy_recon1_0(name4, 0);
+    
+	PlyModel* happy_p1, * happy_p2, * happy_p3, * happy_p4;
+	char name1[] = "media/obj/happy_recon/happy_vrip.ply";
+	char name2[] = "media/obj/happy_recon/happy_vrip_res2.ply";
+	char name3[] = "media/obj/happy_recon/happy_vrip_res3.ply";
+	char name4[] = "media/obj/happy_recon/happy_vrip_res4.ply";
+	PlyModel happy_recon1_0(name4, 0);
+	happy_p1 = new PlyModel(name1, true);
+	happy_p2 = new PlyModel(name2, true);
+	happy_p3 = new PlyModel(name3, true);
+	happy_p4 = new PlyModel(name4, true);
+
     // ----------------------------------------------
     floorShader.use();
     floorShader.setInt("texture1", 0);
@@ -102,7 +131,6 @@ int main()
 
     Model rock("media/obj/rock/rock.obj");
     Model bomb("media/obj/Bomb/Bomb.obj");
-	diymodel.remake();
     //Model test("resources/objects/happy_recon/happy_vrip.obj");
 
     // load PBR material textures
@@ -223,7 +251,7 @@ int main()
         modelMatrices[i] = model;
     }
 
-
+	// render loop
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = glfwGetTime();
@@ -450,7 +478,7 @@ int main()
 			lightingShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
 			lightingShader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
 			lightingShader.setVec3("viewPos", camera.Position);
-			if (light == 0)
+			if (!light)
 			{
 				lightingShader.setVec3("light.ambient", 0.1f, 0.1f, 0.1f);
 				lightingShader.setVec3("light.diffuse", 0.1f, 0.1f, 0.1f);
@@ -500,12 +528,182 @@ int main()
 			skull.draw(lightingShader);
 
 			// vase
+			//model = glm::mat4(1.0f);
+			//model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.8f)); // translate it down so it's at the center of the scene
+			//model = glm::rotate(model, glm::radians(-90.0f), glm::normalize(glm::vec3(1.0, 0.0, 0.0)));
+			//model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));	// it's a bit too big for our scene, so scale it down
+			//lightingShader.setMat4("model", model);
+			//vase.draw(lightingShader);
 			model = glm::mat4(1.0f);
 			model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.8f)); // translate it down so it's at the center of the scene
 			model = glm::rotate(model, glm::radians(-90.0f), glm::normalize(glm::vec3(1.0, 0.0, 0.0)));
 			model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));	// it's a bit too big for our scene, so scale it down
 			lightingShader.setMat4("model", model);
-			vase.draw(lightingShader);
+			skull1.draw(lightingShader);
+
+			//GeometricSolid* cube[NumOfGeometrics];
+			// 没有爆炸的时候，显示rock
+			if (!collision)
+			{
+				model = glm::mat4(1.0f);
+				model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+				for (unsigned int i = 0; i < amount; i++)
+				{
+					lightingShader.setMat4("model", modelMatrices[i]);
+					rock.draw(lightingShader);
+				}
+			}
+
+			//bombing rock
+			// 炸弹碰到了，此时还应该显示rock爆炸画面
+			if (collision && rock_visible)
+			{
+				rateCount++;
+				if ((rateCount % 500 == 0) && rate > 0.001)
+				{
+					rate -= 0.001;
+				}
+				if (rateCount == 600)
+				{
+					rock_visible = false;
+					light = false;
+					time1 = currentFrame;
+				}
+				model = glm::mat4(1.0f);
+				model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
+				for (unsigned int i = 0; i < amount; i++)
+				{
+					glm::mat4 model = glm::mat4(1.0f);
+					modelMatrices[i] = glm::translate(modelMatrices[i], glm::vec3((float)glfwGetTime() * rate, 0, 0));
+				}
+				for (unsigned int i = 0; i < amount; i++)
+				{
+					lightingShader.setMat4("model", modelMatrices[i]);
+					rock.draw(lightingShader);
+				}
+			}
+			// 爆炸，并且是第一次，画炸弹，判断是否碰到
+			lightingShader.setFloat("material.shininess", 32.0f);
+			if (is_bomb && !collision)
+			{
+				model = glm::mat4(1.0f);
+				if (bomby > 0.5)
+					bomby -= (float)glfwGetTime() * 0.0005;
+				if (bomby < 0.5)
+				{
+					collision = true;
+				}
+				model = glm::translate(model, glm::vec3(bombx, bomby, -1));
+				lightingShader.setMat4("model", model);
+				bomb.draw(lightingShader);
+			}
+
+			if (!rock_visible) {
+				lightingShader1.use();
+				lightingShader1.setVec3("light.position", camera.Position);
+				lightingShader1.setVec3("light.direction", camera.Front);
+				lightingShader1.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
+				lightingShader1.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
+				lightingShader1.setVec3("viewPos", camera.Position);
+
+				if (!light)
+				{
+					// light properties
+					lightingShader1.setVec3("light.ambient", 0.0f, 0.0f, 0.0f);
+					lightingShader1.setVec3("light.diffuse", 0.0f, 0.0f, 0.0f);
+					lightingShader1.setVec3("light.specular", 0.0f, 0.0f, 0.0f);
+					lightingShader1.setFloat("light.constant", 0.0f);
+					lightingShader1.setFloat("light.linear", 0.0f);
+					lightingShader1.setFloat("light.quadratic", 0.0f);
+					// material properties
+					lightingShader1.setFloat("material.shininess", 0.0f);
+					// view/projection transformations
+					glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+					glm::mat4 view = camera.GetViewMatrix();
+					lightingShader1.setMat4("projection", projection);
+					lightingShader1.setMat4("view", view);
+					// world transformation
+					glm::mat4 model = glm::mat4(1.0f);
+					model = glm::translate(model, glm::vec3(0.0f, -1.0f, -2.0f));
+					model = glm::scale(model, glm::vec3(10.0f));
+					lightingShader1.setMat4("model", model);
+					happy_recon1_0.Draw();
+					time1 = currentFrame;
+				}
+				else
+				{
+					lightingShader1.setVec3("light.ambient", 0.0f, 0.0f, 0.0f);
+					lightingShader1.setVec3("light.diffuse", 1.0f, 0.0f, 0.0f);
+					lightingShader1.setVec3("light.specular", 0.4f, 0.4f, 0.4f);
+					lightingShader1.setFloat("light.constant", 1.0f);
+					lightingShader1.setFloat("light.linear", 0.09f);
+					lightingShader1.setFloat("light.quadratic", 0.032f);
+
+					// material properties
+					lightingShader1.setFloat("material.shininess", 32.0f);
+
+					// view/projection transformations
+					glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+					glm::mat4 view = camera.GetViewMatrix();
+					lightingShader1.setMat4("projection", projection);
+					lightingShader1.setMat4("view", view);
+
+					// world transformation
+					glm::mat4 model = glm::mat4(1.0f);
+					model = glm::translate(model, glm::vec3(0.0f, -1.0f, -2.0f));
+					model = glm::scale(model, glm::vec3(10.0f));
+					lightingShader1.setMat4("model", model);
+
+					float timing = currentFrame - time1;
+					float cuts[3] = { 3,6,9 };
+					if (happy_p1 && timing > cuts[2])
+					{
+						float time = (timing - cuts[2]) > 3 ? 3 : (timing - cuts[2]);
+						float interval = cuts[2] - cuts[1];
+						lightingShader1.setVec3("light.ambient", inter(material2[0][0], material1[0][0], time, interval), inter(material2[0][1], material1[0][1], time, interval), inter(material2[0][2], material1[0][2], time, interval));
+						lightingShader1.setVec3("light.diffuse", inter(material2[1][0], material1[1][0], time, interval), inter(material2[1][1], material1[1][1], time, interval), inter(material2[1][2], material1[1][2], time, interval));
+						lightingShader1.setVec3("light.specular", inter(material2[2][0], material1[2][0], time, interval), inter(material2[2][1], material1[2][1], time, interval), inter(material2[2][2], material2[2][2], time, interval));
+						lightingShader1.setFloat("material.shininess", inter(Shininess[3], Shininess[2], time, interval));
+						if (happy_p1->needInit())
+							happy_p1->afterMultiInit();
+						happy_p1->Draw();
+					}
+					else if (happy_p2 && timing > cuts[1])
+					{
+						float time = (timing - cuts[1]);
+						float interval = cuts[1] - cuts[0];
+						lightingShader1.setVec3("light.ambient", inter(material3[0][0], material2[0][0], time, interval), inter(material3[0][1], material2[0][1], time, interval), inter(material3[0][2], material2[0][2], time, interval));
+						lightingShader1.setVec3("light.diffuse", inter(material3[1][0], material2[1][0], time, interval), inter(material3[1][1], material2[1][1], time, interval), inter(material3[1][2], material2[1][2], time, interval));
+						lightingShader1.setVec3("light.specular", inter(material3[2][0], material2[2][0], time, interval), inter(material3[2][1], material2[2][1], time, interval), inter(material3[2][2], material3[2][2], time, interval));
+						lightingShader1.setFloat("material.shininess", inter(Shininess[2], Shininess[1], time, interval));
+						if (happy_p2->needInit())
+							happy_p2->afterMultiInit();
+						happy_p2->Draw();
+					}
+					else if (happy_p3 && timing > cuts[0])
+					{
+						float time = (timing - cuts[0]);
+						float interval = cuts[0] - 0;
+						lightingShader1.setVec3("light.ambient", inter(material4[0][0], material3[0][0], time, interval), inter(material4[0][1], material3[0][1], time, interval), inter(material4[0][2], material3[0][2], time, interval));
+						lightingShader1.setVec3("light.diffuse", inter(material4[1][0], material3[1][0], time, interval), inter(material4[1][1], material3[1][1], time, interval), inter(material4[1][2], material3[1][2], time, interval));
+						lightingShader1.setVec3("light.specular", inter(material4[2][0], material3[2][0], time, interval), inter(material4[2][1], material3[2][1], time, interval), inter(material4[2][2], material3[2][2], time, interval));
+						lightingShader1.setFloat("material.shininess", inter(Shininess[3], Shininess[2], time, interval));
+						if (happy_p3->needInit())
+							happy_p3->afterMultiInit();
+						happy_p3->Draw();
+					}
+					else if (happy_p4)
+					{
+						lightingShader1.setVec3("light.ambient", material4[0][0], material4[0][1], material4[0][2]);
+						lightingShader1.setVec3("light.diffuse", material4[1][0], material4[1][1], material4[1][2]);
+						lightingShader1.setVec3("light.specular", material4[2][0], material4[2][1], material4[2][2]);
+						lightingShader1.setFloat("material.shininess", Shininess[3]);
+						if (happy_p4->needInit())
+							happy_p4->afterMultiInit();
+						happy_p4->Draw();
+					}
+				}
+			}
 
 			// ------
 			floorShader.use();
@@ -557,6 +755,55 @@ int main()
     return 0;
 }
 
+void saveimage(const string& file, int width, int height)
+{
+	std::string suffix = file.substr(file.find_last_of('.') + 1);
+	int comp = 3;
+	enum TextureType
+	{
+		PNG, JPG, BMP
+	};
+
+	TextureType type;
+	if (!suffix.compare("png"))
+	{
+		comp = 4;
+		type = PNG;
+	}
+	else if (!suffix.compare("jpg"))
+		type = JPG;
+	else if (!suffix.compare("bmp"))
+		type = BMP;
+
+	unsigned char* data = new unsigned char[width * height * comp];
+
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, &data[0]);
+
+	unsigned char* newdata = new unsigned char[width * height * comp];
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width * 3; j++)
+			newdata[i * width * comp + j] = data[width * (height - i - 1) * comp + j];
+	}
+
+	switch (type)
+	{
+	case PNG:
+		stbi_write_png(file.c_str(), width, height, comp, newdata, width * 4);
+		break;
+	case JPG:
+		stbi_write_jpg(file.c_str(), width, height, comp, newdata, 100);
+		break;
+	case BMP:
+		stbi_write_bmp(file.c_str(), width, height, comp, newdata);
+		break;
+	default:
+		std::cout << "save texture failed" << std::endl;
+		break;
+	}
+}
+
 void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -571,6 +818,10 @@ void processInput(GLFWwindow* window)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
 		light = true;
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+		is_bomb = true;
+	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
+		saveimage("screenshot.jpg", SCR_WIDTH, SCR_HEIGHT);
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
@@ -596,4 +847,14 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	camera.ProcessMouseScroll(yoffset);
+}
+
+float inter(float a, float b, float time, float interval)
+{
+	float tmp = ((b - a) / interval) * time + a;
+	if (a < b)
+		return tmp > b ? b : tmp;
+	else
+		return tmp > a ? a : tmp;
+
 }
